@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="旅行助手">
+<meta name="theme-color" content="#8BC0A9">
+<title>AI Travel Planner</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+:root{
+  --p:#8BC0A9;--p2:#70ab93;--sec:#5E8DC2;--sec2:#4d7ab0;
+  --err:#FF4D4F;--suc:#10B981;
+  --bg:#F8FAF8;--tx:#1F2937;--tx2:#6B7280;--tx3:#9CA3AF;
+  --card:#fff;--bdr:rgba(0,0,0,0.07);
+  --r:12px;--nav:68px;
+  --shadow:0 2px 16px rgba(0,0,0,0.07);
+  --font:'Noto Sans TC',system-ui,sans-serif
+}
+html{height:100%;overflow:hidden}
+body{height:100%;font-family:var(--font);background:#e5e7eb;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.device{width:100%;max-width:390px;height:100vh;max-height:844px;background:var(--bg);position:relative;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,0.25)}
+@media(max-width:430px){.device{max-height:100vh;border-radius:0}}
+@media(min-width:431px){.device{border-radius:44px}}
+
+/* ── Screens ── */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateX(24px);transition:opacity .28s ease,transform .28s ease;will-change:opacity,transform}
+.screen.active{opacity:1;pointer-events:all;transform:translateX(0)}
+.screen.exit{opacity:0;transform:translateX(-16px)}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:calc(var(--nav) + 12px)}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ── Typography ── */
+.page-title{font-size:24px;font-weight:700;color:var(--tx)}
+.page-sub{font-size:13px;color:var(--tx2);margin-top:3px}
+.section-label{font-size:11px;font-weight:700;color:var(--tx2);letter-spacing:.8px;text-transform:uppercase;margin:20px 0 10px}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);box-shadow:var(--shadow)}
+.card-p{padding:16px}
+.card-sm{padding:12px}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.badge-g{background:#D1FAE5;color:#065F46}
+.badge-b{background:#DBEAFE;color:#1E40AF}
+.badge-y{background:#FEF3C7;color:#92400E}
+.badge-r{background:#FEE2E2;color:#991B1B}
+.badge-gray{background:#F3F4F6;color:#374151}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:var(--font);transition:all .15s;-webkit-user-select:none;user-select:none}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:var(--p);color:#fff}
+.btn-primary:active{background:var(--p2)}
+.btn-secondary{background:transparent;border:1.5px solid var(--p);color:var(--p)}
+.btn-white{background:#fff;color:var(--p);font-weight:700}
+.btn-ghost{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff}
+.btn-full{width:100%}
+.btn-sm{padding:7px 14px;font-size:12px;border-radius:8px}
+.btn-add{background:transparent;border:1px solid var(--p);color:var(--p);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s}
+.btn-add:active{transform:scale(.95)}
+.btn-added{background:#D1FAE5;border:1px solid #6EE7B7;color:#065F46;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
+
+/* ── Header ── */
+.page-header{background:var(--card);padding:52px 20px 16px;border-bottom:.5px solid rgba(0,0,0,.06);position:sticky;top:0;z-index:50}
+
+/* ── Filters ── */
+.filter-row{display:flex;gap:8px;overflow-x:auto;padding:2px 0;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{flex-shrink:0;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:500;border:.5px solid var(--bdr);background:var(--card);color:var(--tx2);cursor:pointer;font-family:var(--font);transition:all .18s}
+.filter-chip.on{background:var(--p);color:#fff;border-color:var(--p)}
+
+/* ── Stat Cards ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat-card{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);padding:16px;box-shadow:var(--shadow)}
+.stat-num{font-size:28px;font-weight:700;color:var(--p);line-height:1}
+.stat-lbl{font-size:11px;color:var(--tx2);margin-top:4px;font-weight:500}
+
+/* ── Place Card ── */
+.place-card{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.place-img{height:140px;display:flex;align-items:center;justify-content:center;font-size:54px;position:relative}
+.place-tag{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.92);font-size:11px;font-weight:600;color:var(--tx);padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px)}
+.place-body{padding:14px}
+
+/* ── AI Card ── */
+.ai-card{background:linear-gradient(135deg,#f0faf6,#eaf3ff);border:.5px solid rgba(139,192,169,.35);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.ai-label{font-size:11px;font-weight:700;color:var(--sec);letter-spacing:.6px;margin-bottom:6px}
+
+/* ── Timeline ── */
+.day-header{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;box-shadow:var(--shadow);margin-bottom:4px}
+.day-items{overflow:hidden;transition:max-height .32s cubic-bezier(.4,0,.2,1);border-left:2px solid rgba(139,192,169,.3);margin-left:20px;margin-bottom:8px}
+.t-item{display:flex;gap:10px;padding:10px 12px;position:relative}
+.t-item::before{content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--p);z-index:1}
+.t-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+
+/* ── Progress ── */
+.progress-track{height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;border-radius:4px;background:var(--p);transition:width .8s cubic-bezier(.4,0,.2,1)}
+.progress-fill.danger{background:var(--err)}
+
+/* ── Expense ── */
+.expense-row{display:flex;align-items:center;gap:10px;padding:12px 0}
+.expense-row+.expense-row{border-top:.5px solid rgba(0,0,0,.06)}
+.exp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.mini-track{height:5px;background:#E5E7EB;border-radius:3px;flex:1;overflow:hidden}
+.mini-fill{height:100%;border-radius:3px}
+
+/* ── Journal ── */
+.journal-card{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);box-shadow:var(--shadow);overflow:hidden;margin-bottom:14px}
+.j-img{height:160px;display:flex;align-items:center;justify-content:center;font-size:58px}
+.j-body{padding:14px}
+.j-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.j-btn{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:500;border:.5px solid var(--bdr);background:var(--card);color:var(--tx2);cursor:pointer;font-family:var(--font)}
+
+/* ── Trip Card ── */
+.trip-card{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+.city-chip{background:#EFF6FF;color:#1D4ED8;border-radius:8px;font-size:11px;font-weight:500;padding:4px 10px}
+.countdown-box{background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-top:10px}
+
+/* ── Tabs ── */
+.tab-row{display:flex;background:var(--card);border-bottom:.5px solid rgba(0,0,0,.07)}
+.tab{flex:1;text-align:center;padding:12px 0;font-size:13px;font-weight:500;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;font-family:var(--font)}
+.tab.on{color:var(--p);border-bottom-color:var(--p);font-weight:600}
+
+/* ── Tip / Warning ── */
+.tip-bar{background:#F0FDF9;border:.5px solid #A7F3D0;border-radius:10px;padding:11px 14px;font-size:12px;color:#065F46;font-weight:500;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.warn-bar{background:#FEF2F2;border:.5px solid rgba(255,77,79,.25);border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+
+/* ── Bottom Nav ── */
+.nav{position:absolute;bottom:0;left:0;right:0;height:var(--nav);background:rgba(255,255,255,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:.5px solid rgba(0,0,0,.07);display:flex;align-items:center;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:8px 0;position:relative;transition:all .15s}
+.nav-item::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:3px;background:var(--p);border-radius:0 0 3px 3px;transition:width .25s cubic-bezier(.4,0,.2,1)}
+.nav-item.on::before{width:28px}
+.nav-icon{font-size:22px;color:var(--tx3);transition:color .2s}
+.nav-item.on .nav-icon{color:var(--p)}
+.nav-lbl{font-size:10px;font-weight:500;color:var(--tx3);transition:color .2s}
+.nav-item.on .nav-lbl{color:var(--p)}
+
+/* ── FAB ── */
+.fab{position:absolute;bottom:calc(var(--nav) + 14px);right:20px;background:linear-gradient(135deg,var(--p),var(--sec));color:#fff;border:none;border-radius:14px;padding:13px 20px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(91,192,160,.45);display:flex;align-items:center;gap:6px;z-index:50;font-family:var(--font)}
+.fab:active{transform:scale(.94)}
+
+/* ── Modal ── */
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;flex-direction:column;justify-content:flex-end;animation:fadeUp .25s ease}
+.modal-sheet{background:var(--card);border-radius:24px 24px 0 0;padding:0 20px 40px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-sheet::-webkit-scrollbar{display:none}
+.modal-handle{width:36px;height:4px;background:#E0E0E0;border-radius:2px;margin:14px auto 22px}
+.field-lbl{font-size:12px;font-weight:600;color:var(--tx2);margin:0 0 6px;display:block}
+.field-input{width:100%;padding:12px 14px;border-radius:10px;border:.5px solid rgba(0,0,0,.12);background:#F9FAFB;font-size:14px;font-family:var(--font);color:var(--tx);outline:none;margin-bottom:14px;transition:border-color .15s}
+.field-input:focus{border-color:var(--p);background:#fff;box-shadow:0 0 0 3px rgba(139,192,169,.15)}
+
+/* ── Hero Home ── */
+.hero-home{background:linear-gradient(145deg,#8BC0A9 0%,#5E8DC2 60%,#3a6fa8 100%);padding:60px 24px 40px;text-align:center;color:#fff;position:relative;overflow:hidden;flex-shrink:0}
+.hero-deco1{position:absolute;top:-50px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.07)}
+.hero-deco2{position:absolute;bottom:-50px;left:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.05)}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.quick-card{background:var(--card);border-radius:var(--r);border:.5px solid var(--bdr);padding:16px;cursor:pointer;transition:all .18s;box-shadow:var(--shadow)}
+.quick-card:active{transform:scale(.96);background:#f9fafb}
+.feature-item{background:#F0FDF9;border-radius:10px;padding:13px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+
+/* ── Animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e4e4e4 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px}
+
+/* ── Misc ── */
+.pad{padding:0 20px}
+.divider{height:.5px;background:rgba(0,0,0,.06);margin:0 0 14px}
+input[type=text],input[type=date],input[type=number]{-webkit-appearance:none;appearance:none}
+</style>
+</head>
+<body>
+<div class="device" id="app">
+
+<!-- ══════════════════════════════════════
+     HOME SCREEN
+══════════════════════════════════════ -->
+<div class="screen active" id="s-home">
+  <div class="scroll">
+    <div class="hero-home">
+      <div class="hero-deco1"></div>
+      <div class="hero-deco2"></div>
+      <div style="font-size:44px;margin-bottom:18px">✈️</div>
+      <h1 style="font-size:24px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.3">開始你的下一段旅程</h1>
+      <p style="font-size:14px;color:rgba(255,255,255,.88);line-height:1.75;margin-bottom:28px">從靈感、規劃到回憶收藏<br>讓 AI 陪你完成每一次旅行</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-white btn-full" style="padding:14px;font-size:15px;border-radius:12px" onclick="go('explore')">立即開始規劃</button>
+        <button class="btn btn-ghost btn-full" style="padding:14px;font-size:14px;border-radius:12px" onclick="go('explore')">探索熱門景點</button>
+      </div>
+    </div>
+    <div class="pad" style="padding-top:22px">
+      <div class="section-label">快速開始</div>
+      <div class="quick-grid">
+        <div class="quick-card" onclick="go('explore')">
+          <div style="font-size:28px;margin-bottom:8px">🗺️</div>
+          <div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">探索景點</div>
+          <div style="font-size:11px;color:var(--tx2);line-height:1.5">發現世界各地精選景點</div>
+        </div>
+        <div class="quick-card" onclick="showModal('create-trip')">
+          <div style="font-size:28px;margin-bottom:8px">✈️</div>
+          <div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">建立新旅程</div>
+          <div style="font-size:11px;color:var(--tx2);line-height:1.5">規劃你的下一次旅行</div>
+        </div>
+        <div class="quick-card" onclick="go('itinerary')">
+          <div style="font-size:28px;margin-bottom:8px">🤖</div>
+          <div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">AI 自動規劃</div>
+          <div style="font-size:11px;color:var(--tx2);line-height:1.5">讓 AI 設計完美行程</div>
+        </div>
+        <div class="quick-card" onclick="go('journal')">
+          <div style="font-size:28px;margin-bottom:8px">📔</div>
+          <div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:4px">旅行日記</div>
+          <div style="font-size:11px;color:var(--tx2);line-height:1.5">記錄每個珍貴時刻</div>
+        </div>
+      </div>
+      <div class="section-label">為什麼選擇我們</div>
+      <div class="feature-item">
+        <div style="font-size:22px">✨</div>
+        <div><div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:3px">智能行程優化</div><div style="font-size:12px;color:var(--tx2);line-height:1.6">根據你的偏好自動安排最佳動線與時間</div></div>
+      </div>
+      <div class="feature-item">
+        <div style="font-size:22px">💬</div>
+        <div><div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:3px">AI 旅記生成</div><div style="font-size:12px;color:var(--tx2);line-height:1.6">一鍵生成精彩旅行日記與故事</div></div>
+      </div>
+      <div class="feature-item">
+        <div style="font-size:22px">💰</div>
+        <div><div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:3px">即時預算追蹤</div><div style="font-size:12px;color:var(--tx2);line-height:1.6">邊規劃邊控管花費，再也不超支</div></div>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item on" onclick="go('home')"><span class="nav-icon">🏠</span><span class="nav-lbl">首頁</span></div>
+    <div class="nav-item" onclick="go('explore')"><span class="nav-icon">🧭</span><span class="nav-lbl">探索</span></div>
+    <div class="nav-item" onclick="go('itinerary')"><span class="nav-icon">📅</span><span class="nav-lbl">行程</span></div>
+    <div class="nav-item" onclick="go('budget')"><span class="nav-icon">💰</span><span class="nav-lbl">預算</span></div>
+    <div class="nav-item" onclick="go('trips')"><span class="nav-icon">✈️</span><span class="nav-lbl">旅行</span></div>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════
+     EXPLORE SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="s-explore">
+  <div class="page-header">
+    <div class="page-title">探索世界</div>
+    <div class="page-sub">發現你的下一個夢想目的地</div>
+    <div class="card" style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px">
+      <i class="ti ti-search" style="font-size:18px;color:var(--tx3)"></i>
+      <input id="search-in" type="text" placeholder="搜尋國家、城市或景點…" style="border:none;outline:none;background:transparent;flex:1;font-size:14px;font-family:var(--font);color:var(--tx)" oninput="filterPlaces(this.value)">
+      <i class="ti ti-x" style="font-size:16px;color:var(--tx3);cursor:pointer" onclick="clearSearch()"></i>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="pad" style="padding-top:14px">
+      <div class="tip-bar">✨ <span>只需 3 個步驟，快速完成你的專屬行程</span></div>
+      <div class="filter-row" id="filter-row">
+        <button class="filter-chip on" onclick="setFilter('all',this)">全部</button>
+        <button class="filter-chip" onclick="setFilter('nature',this)">🌿 自然</button>
+        <button class="filter-chip" onclick="setFilter('food',this)">🍜 美食</button>
+        <button class="filter-chip" onclick="setFilter('culture',this)">🏛 文化</button>
+        <button class="filter-chip" onclick="setFilter('family',this)">👨‍👩‍👧 親子</button>
+      </div>
+      <div class="section-label" id="places-section-label">為你推薦</div>
+      <div id="places-list"></div>
+      <div class="ai-card">
+        <div class="ai-label">✦ AI 推薦</div>
+        <div style="font-size:15px;font-weight:700;color:var(--tx);margin:4px 0 6px">找不到理想目的地？</div>
+        <div style="font-size:13px;color:var(--tx2);line-height:1.65;margin-bottom:14px">告訴 AI 你的旅遊風格，自動生成你的專屬行程推薦。</div>
+        <button class="btn btn-primary btn-sm">根據我的喜好推薦 ↗</button>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item" onclick="go('home')"><span class="nav-icon">🏠</span><span class="nav-lbl">首頁</span></div>
+    <div class="nav-item on"><span class="nav-icon">🧭</span><span class="nav-lbl">探索</span></div>
+    <div class="nav-item" onclick="go('itinerary')"><span class="nav-icon">📅</span><span class="nav-lbl">行程</span></div>
+    <div class="nav-item" onclick="go('budget')"><span class="nav-icon">💰</span><span class="nav-lbl">預算</span></div>
+    <div class="nav-item" onclick="go('trips')"><span class="nav-icon">✈️</span><span class="nav-lbl">旅行</span></div>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════
+     ITINERARY SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="s-itinerary">
+  <div class="page-header">
+    <div class="page-title">你的行程</div>
+    <div class="page-sub">一目了然掌握你的旅行規模</div>
+  </div>
+  <div class="scroll">
+    <div class="pad" style="padding-top:14px">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num">10</div><div class="stat-lbl">旅行天數</div></div>
+        <div class="stat-card"><div class="stat-num">14</div><div class="stat-lbl">景點數量</div></div>
+        <div class="stat-card"><div class="stat-num">3</div><div class="stat-lbl">城市數量</div></div>
+        <div class="stat-card"><div class="stat-num">8</div><div class="stat-lbl">餐廳收藏</div></div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-label">✦ AI 智能優化</div>
+        <div style="font-size:15px;font-weight:700;color:var(--tx);margin:4px 0 6px">自動優化你的行程節奏</div>
+        <div style="font-size:13px;color:var(--tx2);line-height:1.65;margin-bottom:14px">根據動線、交通時間與體驗品質，AI 重新安排最舒適的旅行順序。</div>
+        <button class="btn btn-primary btn-sm">AI 完善行程 →</button>
+      </div>
+      <div class="section-label">行程時間軸</div>
+      <div id="timeline-list"></div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item" onclick="go('home')"><span class="nav-icon">🏠</span><span class="nav-lbl">首頁</span></div>
+    <div class="nav-item" onclick="go('explore')"><span class="nav-icon">🧭</span><span class="nav-lbl">探索</span></div>
+    <div class="nav-item on"><span class="nav-icon">📅</span><span class="nav-lbl">行程</span></div>
+    <div class="nav-item" onclick="go('budget')"><span class="nav-icon">💰</span><span class="nav-lbl">預算</span></div>
+    <div class="nav-item" onclick="go('trips')"><span class="nav-icon">✈️</span><span class="nav-lbl">旅行</span></div>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════
+     BUDGET SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="s-budget">
+  <div class="page-header">
+    <div class="page-title">旅行預算</div>
+    <div class="page-sub">💡 邊規劃邊控管花費</div>
+  </div>
+  <div class="scroll">
+    <div class="pad" style="padding-top:14px">
+      <div class="card card-p" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div>
+            <div style="font-size:12px;color:var(--tx2);font-weight:600;margin-bottom:5px">總預算</div>
+            <div style="font-size:30px;font-weight:700;color:var(--tx)">NT$80,000</div>
+          </div>
+          <span class="badge badge-g" id="budget-badge">正常</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="b-fill" style="width:73%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--tx2)">
+          <span>已花費 <strong style="color:var(--tx)">NT$58,200</strong></span>
+          <span>剩餘 <strong style="color:var(--p)">NT$21,800</strong></span>
+        </div>
+      </div>
+      <div class="section-label">費用分類</div>
+      <div class="card card-p" style="margin-bottom:14px" id="expense-cats"></div>
+      <div class="section-label">明細記錄</div>
+      <div id="expense-details"></div>
+      <button class="btn btn-secondary btn-full" style="margin-bottom:14px" onclick="showModal('add-expense')">
+        <i class="ti ti-plus"></i> 新增花費
+      </button>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item" onclick="go('home')"><span class="nav-icon">🏠</span><span class="nav-lbl">首頁</span></div>
+    <div class="nav-item" onclick="go('explore')"><span class="nav-icon">🧭</span><span class="nav-lbl">探索</span></div>
+    <div class="nav-item" onclick="go('itinerary')"><span class="nav-icon">📅</span><span class="nav-lbl">行程</span></div>
+    <div class="nav-item on"><span class="nav-icon">💰</span><span class="nav-lbl">預算</span></div>
+    <div class="nav-item" onclick="go('trips')"><span class="nav-icon">✈️</span><span class="nav-lbl">旅行</span></div>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════
+     JOURNAL SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="s-journal">
+  <div class="page-header">
+    <div class="page-title">旅行日記</div>
+    <div class="page-sub">記錄每一個珍貴時刻</div>
+  </div>
+  <div class="scroll">
+    <div class="pad" style="padding-top:14px">
+      <div style="background:linear-gradient(135deg,var(--p),var(--sec));border-radius:var(--r);padding:20px;margin-bottom:14px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08)"></div>
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px">留下這趟旅程的回憶</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.88);line-height:1.65;margin-bottom:16px">讓 AI 幫你整理今天的風景、心情與故事。</div>
+        <button class="btn btn-ghost btn-sm">+ AI 寫今日旅記</button>
+      </div>
+      <div id="journal-list"></div>
+      <div style="text-align:center;padding:20px 0 10px">
+        <div style="font-size:13px;color:var(--tx2);margin-bottom:12px">還沒有任何旅行日記</div>
+        <button class="btn btn-secondary btn-sm" onclick="showModal('add-journal')">
+          <i class="ti ti-plus"></i> 記錄今天
+        </button>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item" onclick="go('home')"><span class="nav-icon">🏠</span><span class="nav-lbl">首頁</span></div>
+    <div class="nav-item" onclick="go('explore')"><span class="nav-icon">🧭</span><span class="nav-lbl">探索</span></div>
+    <div class="nav-item" onclick="go('itinerary')"><span class="nav-icon">📅</span><span class="nav-lbl">行程</span></div>
+    <div class="nav-item" onclick="go('budget')"><span class="nav-icon">💰</span><span class="nav-lbl">預算</span></div>
+    <div class="nav-item on"><span class="nav-icon">✈️</span><span class="nav-lbl">旅行</span></div>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════
+     TRIPS SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="s-trips">
+  <div class="page-header">
+    <div class="page-title">我的旅程</div>
+    <div class="page-sub">管理所有旅行計畫</div>
+  </div>
+  <div class="scroll">
+    <div class="pad" style="padding-top:14px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        <div class="stat-card" style="text-align:center;padding:14px 8px"><div class="stat-num" style="font-size:24px">11</div><div class="stat-lbl">總旅程</div></div>
+        <div class="stat-card" style="text-align:center;padding:14px 8px"><div class="stat-num" style="font-size:24px">8</div><div class="stat-lbl">已完成</div></div>
+        <div class="stat-card" style="text-align:center;padding:14px 8px"><div class="stat-num" style="font-size:24px">16</div><div class="stat-lbl">收藏城市</div></div>
+      </div>
+      <div class="tab-row" id="trip-tabs">
+        <div class="tab on" onclick="setTripTab('ongoing',this)">進行中</div>
+        <div class="tab" onclick="setTripTab('upcoming',this)">即將出發</div>
+        <div class="tab" onclick="setTripTab('completed',this)">已完成</div>
+      </div>
+      <div id="trips-list" style="padding-top:14px"></div>
+    </div>
+  </div>
+  <button class="fab" onclick="showModal('create-trip')">
+    <i class="ti ti-plus"></i> 建立新旅程
+  </button>
+  <nav class="nav">
+    <div class="nav-item" onclick="go('home')"><span class="nav-icon">🏠</span><span class="nav-lbl">首頁</span></div>
+    <div class="nav-item" onclick="go('explore')"><span class="nav-icon">🧭</span><span class="nav-lbl">探索</span></div>
+    <div class="nav-item" onclick="go('itinerary')"><span class="nav-icon">📅</span><span class="nav-lbl">行程</span></div>
+    <div class="nav-item" onclick="go('budget')"><span class="nav-icon">💰</span><span class="nav-lbl">預算</span></div>
+    <div class="nav-item on"><span class="nav-icon">✈️</span><span class="nav-lbl">旅行</span></div>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
+<div id="modal-root"></div>
+
+</div><!-- /device -->
+
+<script>
+// ── Data ─────────────────────────────────────────────────
+const PLACES = [
+  {id:1,n:'嵐山竹林',city:'京都',cat:'nature',emoji:'🎋',bg:'linear-gradient(135deg,#a8d8bc,#5ab882)',rating:4.9,tag:'適合第一次自由行',added:false},
+  {id:2,n:'錦市場',city:'京都',cat:'food',emoji:'🏮',bg:'linear-gradient(135deg,#fad5a5,#f5a050)',rating:4.7,tag:'高評價美食推薦',added:true},
+  {id:3,n:'道頓堀',city:'大阪',cat:'food',emoji:'🌙',bg:'linear-gradient(135deg,#b5c5e8,#6a8fd4)',rating:4.8,tag:'夜景人氣景點',added:false},
+  {id:4,n:'金閣寺',city:'京都',cat:'culture',emoji:'⛩️',bg:'linear-gradient(135deg,#f5e6a3,#d4a830)',rating:4.8,tag:'文化必訪景點',added:true},
+  {id:5,n:'奈良公園',city:'奈良',cat:'family',emoji:'🦌',bg:'linear-gradient(135deg,#b8dfc8,#72b890)',rating:4.6,tag:'親子友善體驗',added:false},
+  {id:6,n:'築地市場',city:'東京',cat:'food',emoji:'🍣',bg:'linear-gradient(135deg,#fcc5a0,#f5804a)',rating:4.8,tag:'高評價美食推薦',added:false},
+  {id:7,n:'富士山',city:'靜岡',cat:'nature',emoji:'🗻',bg:'linear-gradient(135deg,#c5d8f0,#7aaad8)',rating:4.9,tag:'人生必訪景點',added:false},
+  {id:8,n:'清水寺',city:'京都',cat:'culture',emoji:'🛕',bg:'linear-gradient(135deg,#f5c5a8,#e0805a)',rating:4.7,tag:'文化必訪景點',added:false},
+];
+const addedSet = new Set([2,4]);
+
+const DAYS = [
+  {day:'Day 1',date:'03/10',city:'東京',expanded:true,items:[
+    {ic:'✈️',n:'抵達成田機場',t:'14:30',s:'已確認',bg:'#EFF6FF'},
+    {ic:'🏨',n:'新宿プリンスホテル',t:'17:00',s:'已確認',bg:'#F0FDF4'},
+    {ic:'🍣',n:'新宿思い出横丁',t:'19:30',s:'規劃中',bg:'#FFF7ED'},
+  ]},
+  {day:'Day 2',date:'03/11',city:'京都',expanded:false,items:[
+    {ic:'🚄',n:'新幹線 東京→京都',t:'08:00',s:'已確認',bg:'#F5F3FF'},
+    {ic:'⛩️',n:'金閣寺',t:'10:30',s:'已確認',bg:'#FFF7ED'},
+    {ic:'🎋',n:'嵐山竹林散步',t:'13:00',s:'規劃中',bg:'#F0FDF4'},
+    {ic:'🍵',n:'嵐山抹茶體驗',t:'15:30',s:'待安排',bg:'#F9FAFB'},
+  ]},
+  {day:'Day 3',date:'03/12',city:'大阪',expanded:false,items:[
+    {ic:'🚄',n:'新幹線 京都→大阪',t:'09:00',s:'已確認',bg:'#F5F3FF'},
+    {ic:'🏮',n:'道頓堀美食街',t:'11:00',s:'規劃中',bg:'#FFF7ED'},
+    {ic:'🏯',n:'大阪城',t:'14:00',s:'待安排',bg:'#EFF6FF'},
+    {ic:'🎡',n:'天保山摩天輪',t:'17:00',s:'待安排',bg:'#F9FAFB'},
+  ]},
+];
+
+const EXPENSES = [
+  {n:'美食',pct:20,amt:'NT$11,600',color:'#FBBF24'},
+  {n:'住宿',pct:38,amt:'NT$22,000',color:'#8BC0A9'},
+  {n:'交通',pct:22,amt:'NT$12,800',color:'#5E8DC2'},
+  {n:'購物',pct:14,amt:'NT$8,100',color:'#F472B6'},
+  {n:'其他',pct:6,amt:'NT$3,700',color:'#9CA3AF'},
+];
+const DETAILS = [
+  {n:'新宿プリンスホテル',cat:'住宿',date:'03/10',amt:'NT$4,200'},
+  {n:'JR Pass 7日券',cat:'交通',date:'03/10',amt:'NT$8,500'},
+  {n:'思い出横丁',cat:'美食',date:'03/10',amt:'NT$680'},
+  {n:'嵐山抹茶餐廳',cat:'美食',date:'03/11',amt:'NT$890'},
+  {n:'大阪城門票',cat:'景點',date:'03/12',amt:'NT$120'},
+  {n:'心齋橋購物',cat:'購物',date:'03/12',amt:'NT$3,200'},
+];
+
+const JOURNALS = [
+  {id:1,title:'嵐山的靜謐晨光',date:'03/11',city:'京都',emoji:'🎋',bg:'linear-gradient(135deg,#a8d8bc,#5ab882)',text:'清晨七點的嵐山，薄霧瀰漫在竹林之間。腳踩青石板路，只有風吹竹葉的沙沙聲。這一刻，彷彿整個世界只剩下我和這片翠綠。',liked:true},
+  {id:2,title:'築地早市的海鮮盛宴',date:'03/10',city:'東京',emoji:'🍣',bg:'linear-gradient(135deg,#fad5a5,#f5a050)',text:'凌晨五點，跟著老饕們排隊等候。一口下去，鮪魚腹肉在舌尖融化——這就是東京最誠實的味道，任何米其林都比不上的鮮甜。',liked:false},
+  {id:3,title:'大阪城的秋日黃昏',date:'03/12',city:'大阪',emoji:'🏯',bg:'linear-gradient(135deg,#b5c9e8,#6a8fd4)',text:'站在天守閣前，夕陽把石牆染成金色。四百年前的將士與今日遊客的笑聲交織，歷史在此刻變得觸手可及。',liked:false},
+];
+
+const TRIPS = {
+  ongoing:[
+    {flag:'🇯🇵',name:'日本春季之旅',date:'2025.03.10 — 03.20',cities:['東京','京都','大阪'],status:'進行中',sb:'badge-g',cd:null},
+  ],
+  upcoming:[
+    {flag:'🇫🇷',name:'巴黎浪漫週末',date:'2025.05.15 — 05.22',cities:['巴黎','里昂'],status:'即將出發',sb:'badge-b',cd:53},
+    {flag:'🇮🇩',name:'峇里島療癒之旅',date:'2025.07.01 — 07.10',cities:['烏布','庫塔'],status:'即將出發',sb:'badge-b',cd:110},
+  ],
+  completed:[
+    {flag:'🇹🇼',name:'台灣環島自駕',date:'2024.10.01 — 10.08',cities:['台北','花蓮','台南'],status:'已完成',sb:'badge-gray',cd:null},
+    {flag:'🇰🇷',name:'首爾首次旅行',date:'2024.08.05 — 08.12',cities:['首爾','釜山'],status:'已完成',sb:'badge-gray',cd:null},
+  ],
+};
+
+// ── Navigation ───────────────────────────────────────────
+let currentScreen = 'home';
+function go(screen) {
+  if(screen === currentScreen) return;
+  document.getElementById('s-'+currentScreen).classList.remove('active');
+  document.getElementById('s-'+currentScreen).classList.add('exit');
+  setTimeout(()=> document.getElementById('s-'+currentScreen).classList.remove('exit'), 300);
+  currentScreen = screen;
+  document.getElementById('s-'+screen).classList.add('active');
+}
+
+// ── Explore ──────────────────────────────────────────────
+let curFilter = 'all';
+const catBgMap = {nature:'#D1FAE5',food:'#FEF3C7',culture:'#DBEAFE',family:'#FCE7F3'};
+const catColMap = {nature:'#065F46',food:'#92400E',culture:'#1E40AF',family:'#831843'};
+const catLblMap = {nature:'自然',food:'美食',culture:'文化',family:'親子'};
+
+function renderPlaces(list) {
+  const c = document.getElementById('places-list');
+  if(!list.length) {
+    c.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--tx2)">
+      <div style="font-size:44px;margin-bottom:14px">🔍</div>
+      <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px">還沒有找到符合的景點</div>
+      <div style="font-size:13px">試試搜尋其他城市或旅遊類型</div>
+    </div>`;
+    return;
+  }
+  c.innerHTML = list.map(p => `
+    <div class="place-card">
+      <div class="place-img" style="background:${p.bg}">
+        <span>${p.emoji}</span>
+        <span class="place-tag">${p.tag}</span>
+      </div>
+      <div class="place-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tx)">${p.n}</div>
+            <div style="font-size:12px;color:var(--tx2);margin-top:2px">📍 ${p.city}</div>
+          </div>
+          <div style="font-size:13px;color:#FBBF24;font-weight:700">★ ${p.rating}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+          <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:${catBgMap[p.cat]};color:${catColMap[p.cat]}">${catLblMap[p.cat]}</span>
+          <button class="${addedSet.has(p.id)?'btn-added':'btn-add'}" onclick="toggleAdd(${p.id},this)">
+            ${addedSet.has(p.id)?'✓ 已加入行程':'+ 加入行程'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleAdd(id, btn) {
+  if(addedSet.has(id)) {
+    addedSet.delete(id);
+    btn.className='btn-add';
+    btn.textContent='+ 加入行程';
+  } else {
+    addedSet.add(id);
+    btn.className='btn-added';
+    btn.textContent='✓ 已加入行程';
+  }
+}
+function setFilter(f, el) {
+  curFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  applyFilter(document.getElementById('search-in').value);
+  document.getElementById('places-section-label').textContent = f==='all'?'為你推薦':`${el.textContent} 景點`;
+}
+function filterPlaces(q) { applyFilter(q); }
+function clearSearch() { document.getElementById('search-in').value=''; applyFilter(''); }
+function applyFilter(q) {
+  let l = PLACES;
+  if(curFilter !== 'all') l = l.filter(p=>p.cat===curFilter);
+  if(q) l = l.filter(p=>p.n.includes(q)||p.city.includes(q)||p.tag.includes(q));
+  renderPlaces(l);
+}
+
+// ── Itinerary ────────────────────────────────────────────
+const statusBadge = s => ({已確認:'badge-g',規劃中:'badge-y',待安排:'badge-gray'}[s]||'badge-gray');
+
+function renderTimeline() {
+  document.getElementById('timeline-list').innerHTML = DAYS.map((d,i) => `
+    <div style="margin-bottom:10px">
+      <div class="day-header" onclick="toggleDay(${i})">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--tx)">${d.day} · ${d.city}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:2px">${d.date} · ${d.items.length} 個安排</div>
+        </div>
+        <i class="ti ti-chevron-${d.expanded?'up':'down'}" style="font-size:20px;color:var(--tx3)"></i>
+      </div>
+      <div class="day-items" id="day-${i}" style="max-height:${d.expanded?'600px':'0'}">
+        ${d.items.map(it=>`
+          <div class="t-item">
+            <div class="t-icon" style="background:${it.bg}">${it.ic}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:600;color:var(--tx)">${it.n}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                <span style="font-size:12px;color:var(--tx2)">${it.t}</span>
+                <span class="badge ${statusBadge(it.s)}" style="font-size:10px;padding:2px 8px">${it.s}</span>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleDay(i) {
+  DAYS[i].expanded = !DAYS[i].expanded;
+  const el = document.getElementById('day-'+i);
+  el.style.maxHeight = DAYS[i].expanded ? '600px' : '0';
+  document.querySelectorAll('.day-header')[i].querySelector('i').className =
+    `ti ti-chevron-${DAYS[i].expanded?'up':'down'}`;
+}
+
+// ── Budget ───────────────────────────────────────────────
+function renderBudget() {
+  document.getElementById('expense-cats').innerHTML = EXPENSES.map(e => `
+    <div class="expense-row">
+      <div class="exp-dot" style="background:${e.color}"></div>
+      <span style="font-size:13px;color:var(--tx);font-weight:500;flex:0 0 36px">${e.n}</span>
+      <div class="mini-track"><div class="mini-fill" style="width:${e.pct*2.4}%;background:${e.color}"></div></div>
+      <span style="font-size:13px;font-weight:700;color:var(--tx);flex:0 0 88px;text-align:right">${e.amt}</span>
+      <span style="font-size:12px;color:var(--tx2);flex:0 0 30px;text-align:right">${e.pct}%</span>
+    </div>
+  `).join('');
+
+  document.getElementById('expense-details').innerHTML = DETAILS.map(d => `
+    <div class="card card-p" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--tx)">${d.n}</div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:3px">${d.cat} · ${d.date}</div>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:var(--tx)">${d.amt}</div>
+    </div>
+  `).join('');
+}
+
+// ── Journal ──────────────────────────────────────────────
+function renderJournal() {
+  document.getElementById('journal-list').innerHTML = JOURNALS.map(j => `
+    <div class="journal-card">
+      <div class="j-img" style="background:${j.bg}">${j.emoji}</div>
+      <div class="j-body">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <span class="badge badge-gray">${j.date}</span>
+          <span class="badge badge-b">${j.city}</span>
+        </div>
+        <div style="font-size:16px;font-weight:700;color:var(--tx);margin-bottom:8px">${j.title}</div>
+        <div style="font-size:13px;color:var(--tx2);line-height:1.75">${j.text}</div>
+        <div class="j-actions">
+          <button class="j-btn" onclick="toggleLike(${j.id},this)">${j.liked?'❤️':'🤍'} 喜歡</button>
+          <button class="j-btn"><i class="ti ti-wand" style="font-size:13px"></i> AI 潤飾</button>
+          <button class="j-btn"><i class="ti ti-language" style="font-size:13px"></i> 翻譯</button>
+          <button class="j-btn"><i class="ti ti-share" style="font-size:13px"></i> 分享</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleLike(id, btn) {
+  const j = JOURNALS.find(x=>x.id===id);
+  j.liked = !j.liked;
+  btn.innerHTML = `${j.liked?'❤️':'🤍'} 喜歡`;
+}
+
+// ── Trips ────────────────────────────────────────────────
+let curTripTab = 'ongoing';
+function renderTrips(tab) {
+  const list = TRIPS[tab]||[];
+  document.getElementById('trips-list').innerHTML = list.length ? list.map(t => `
+    <div class="trip-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:30px">${t.flag}</span>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700;color:var(--tx)">${t.name}</div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:2px">${t.date}</div>
+        </div>
+        <span class="badge ${t.sb}">${t.status}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${t.cities.map(c=>`<span class="city-chip">📍 ${c}</span>`).join('')}
+      </div>
+      ${t.cd ? `<div class="countdown-box">
+        <i class="ti ti-clock" style="font-size:22px;color:var(--sec)"></i>
+        <div>
+          <div style="font-size:11px;color:var(--tx2)">距離出發</div>
+          <div style="font-size:18px;font-weight:700;color:var(--p)">還有 ${t.cd} 天</div>
+        </div>
+      </div>` : ''}
+      ${tab==='ongoing' ? `<button class="btn btn-primary btn-full btn-sm" style="margin-top:12px;border-radius:8px;padding:11px">查看行程詳情 →</button>` : ''}
+    </div>
+  `).join('') : `<div style="text-align:center;padding:48px 0;color:var(--tx2)">
+    <div style="font-size:44px;margin-bottom:14px">✈️</div>
+    <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px">還沒有旅程</div>
+    <div style="font-size:13px;margin-bottom:16px">點擊下方按鈕開始建立</div>
+    <button class="btn btn-primary btn-sm" onclick="showModal('create-trip')"><i class="ti ti-plus"></i> 建立新旅程</button>
+  </div>`;
+}
+
+function setTripTab(tab, el) {
+  curTripTab = tab;
+  document.querySelectorAll('#trip-tabs .tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  renderTrips(tab);
+}
+
+// ── Modals ───────────────────────────────────────────────
+function showModal(type) {
+  const root = document.getElementById('modal-root');
+  let content = '';
+
+  if(type === 'create-trip') {
+    content = `
+      <div class="modal-handle"></div>
+      <div style="font-size:20px;font-weight:700;color:var(--tx);margin-bottom:4px">建立新的旅程</div>
+      <div style="font-size:13px;color:var(--tx2);margin-bottom:22px">告訴我你的旅行計畫</div>
+      <label class="field-lbl">旅程名稱</label>
+      <input class="field-input" type="text" placeholder="例：日本春季之旅">
+      <label class="field-lbl">國家</label>
+      <input class="field-input" type="text" placeholder="例：日本 🇯🇵">
+      <label class="field-lbl">城市（可多選）</label>
+      <input class="field-input" type="text" placeholder="例：東京、京都、大阪">
+      <label class="field-lbl">開始日期</label>
+      <input class="field-input" type="date">
+      <label class="field-lbl">結束日期</label>
+      <input class="field-input" type="date">
+      <label class="field-lbl">旅行預算</label>
+      <input class="field-input" type="text" placeholder="NT$ 80,000">
+      <button class="btn btn-primary btn-full" style="padding:15px;font-size:15px;border-radius:12px;margin-top:4px" onclick="closeModal()">開始規劃 ✈️</button>
+      <button style="width:100%;text-align:center;padding:14px;font-size:14px;color:var(--tx2);background:none;border:none;cursor:pointer;font-family:var(--font);margin-top:4px" onclick="closeModal()">取消</button>
+    `;
+  } else if(type === 'add-expense') {
+    content = `
+      <div class="modal-handle"></div>
+      <div style="font-size:20px;font-weight:700;color:var(--tx);margin-bottom:4px">新增花費</div>
+      <div style="font-size:13px;color:var(--tx2);margin-bottom:22px">記錄你的旅行支出</div>
+      <label class="field-lbl">項目名稱</label>
+      <input class="field-input" type="text" placeholder="例：嵐山抹茶體驗">
+      <label class="field-lbl">金額</label>
+      <input class="field-input" type="text" placeholder="NT$ 0">
+      <label class="field-lbl">分類</label>
+      <select class="field-input" style="-webkit-appearance:none">
+        <option>美食</option><option>住宿</option><option>交通</option><option>購物</option><option>景點</option><option>其他</option>
+      </select>
+      <label class="field-lbl">日期</label>
+      <input class="field-input" type="date">
+      <button class="btn btn-primary btn-full" style="padding:15px;font-size:15px;border-radius:12px;margin-top:4px" onclick="closeModal()">新增花費</button>
+      <button style="width:100%;text-align:center;padding:14px;font-size:14px;color:var(--tx2);background:none;border:none;cursor:pointer;font-family:var(--font)" onclick="closeModal()">取消</button>
+    `;
+  } else if(type === 'add-journal') {
+    content = `
+      <div class="modal-handle"></div>
+      <div style="font-size:20px;font-weight:700;color:var(--tx);margin-bottom:4px">記錄今天</div>
+      <div style="font-size:13px;color:var(--tx2);margin-bottom:22px">留下旅途中的珍貴回憶</div>
+      <label class="field-lbl">今天去了哪裡？</label>
+      <input class="field-input" type="text" placeholder="地點、城市…">
+      <label class="field-lbl">有什麼讓你印象深刻的瞬間？</label>
+      <textarea class="field-input" rows="4" style="resize:none;height:100px" placeholder="寫下今天的心情、見聞與故事…"></textarea>
+      <div style="background:linear-gradient(135deg,#f0faf6,#eaf3ff);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:center">
+        <span style="font-size:20px">🤖</span>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:2px">讓 AI 幫你潤飾旅記</div>
+          <div style="font-size:12px;color:var(--tx2)">輸入關鍵字，AI 自動生成精彩故事</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" style="padding:15px;font-size:15px;border-radius:12px" onclick="closeModal()">儲存旅記 📔</button>
+      <button style="width:100%;text-align:center;padding:14px;font-size:14px;color:var(--tx2);background:none;border:none;cursor:pointer;font-family:var(--font)" onclick="closeModal()">取消</button>
+    `;
+  }
+
+  root.innerHTML = `
+    <div class="modal-overlay" onclick="handleOverlayClick(event)">
+      <div class="modal-sheet" onclick="event.stopPropagation()">
+        ${content}
+      </div>
+    </div>
+  `;
+}
+
+function handleOverlayClick(e) {
+  if(e.target.classList.contains('modal-overlay')) closeModal();
+}
+function closeModal() {
+  document.getElementById('modal-root').innerHTML = '';
+}
+
+// ── Init ─────────────────────────────────────────────────
+renderPlaces(PLACES);
+renderTimeline();
+renderBudget();
+renderJournal();
+renderTrips('ongoing');
+</script>
+</body>
+</html>
